@@ -1,0 +1,119 @@
+---
+- name: "[HARDENING] Remover usuário anônimo local"
+  community.mysql.mysql_user:
+    name: ^
+    host: localhost
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: absent
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+
+- name: "[HARDENING] Remover usuário anônimo remoto"
+  community.mysql.mysql_user:
+    name: ^
+    host: "%"
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: absent
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+
+- name: "[HARDENING] Remover banco de dados de teste"
+  community.mysql.mysql_db:
+    name: test
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: absent
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+
+- name: "[HARDENING] Desabilitar acesso remoto do root"
+  community.mysql.mysql_user:
+    name: root
+    host: "%"
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: absent
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+
+- name: "[HARDENING] Alterar senha do root"
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ mysql_root_password ^| default('RootSecure123!'^) }}"
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: present
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+  no_log: true
+
+- name: "[HARDENING] Remover privilégios de teste"
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ mysql_root_password ^| default('RootSecure123!'^) }}"
+    query: DELETE FROM mysql.db WHERE Db LIKE 'test%'
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+    - mysql_security
+  no_log: true
+
+- name: "[HARDENING] Configurar arquivo my.cnf"
+  file:
+    path: /etc/mysql/conf.d/my.cnf
+    owner: root
+    group: root
+    mode: '0600'
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+
+- name: "[HARDENING] Desabilitar verificação DNS"
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ mysql_root_password ^| default('RootSecure123!'^) }}"
+    query: SET GLOBAL skip_name_resolve = 1
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+  no_log: true
+
+- name: "[HARDENING] Flush privileges"
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ mysql_root_password ^| default('RootSecure123!'^) }}"
+    query: FLUSH PRIVILEGES
+  ignore_errors: yes
+  tags:
+    - seguranca
+    - hardening
+  no_log: true
+
+- name: "[HARDENING] Exibir resumo"
+  debug:
+    msg: |
+      ✓ Database Server Hardened!
+      Máquina: {{ ansible_facts['hostname'] }}
+      IP: {{ ansible_facts['default_ipv4']['address'] }}
+  tags:
+    - seguranca
+    - hardening

@@ -1,0 +1,4 @@
+---
+mysql_root_password: 'RootSecure123!'
+app_db_password: 'SecurePassword123!'
+repl_db_password: 'ReplicationPass123!'

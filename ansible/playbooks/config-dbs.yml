@@ -1,0 +1,15 @@
+---
+- name: Coletar facts dos webservers para uso como proxy
+  hosts: webservers
+  gather_facts: yes
+  tags:
+    - always
+
+- name: Configuração dos Database Servers
+  hosts: databases
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - db_setup
+    - db_hardening

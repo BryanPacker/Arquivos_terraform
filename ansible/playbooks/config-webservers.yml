@@ -1,0 +1,63 @@
+---
+- name: Configuração dos Webservers
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  handlers:
+    - name: restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Garantir que o NGINX esteja instalado
+      ansible.builtin.package:
+        name: nginx
+        state: present
+      tags:
+        - nginx
+        - install
+
+    - name: Criar diretório para o index.html
+      ansible.builtin.file:
+        path: /var/www/html
+        state: directory
+        mode: '0755'
+      tags:
+        - nginx
+
+    - name: Criar index.html usando template
+      ansible.builtin.template:
+        src: /etc/ansible/templates/index.html.j2
+        dest: /var/www/html/index.html
+        mode: '0644'
+      notify: restart nginx
+      tags:
+        - nginx
+        - config
+
+    - name: Garantir que o NGINX esteja rodando
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+      tags:
+        - nginx
+
+    - name: Aplicar hardening de segurança do kernel
+      ansible.builtin.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+        - { name: 'net.ipv4.conf.default.rp_filter', value: '1' }
+        - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+        - { name: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+        - { name: 'net.ipv4.conf.default.accept_source_route', value: '0' }
+        - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+      tags:
+        - seguranca
+        - hardening

@@ -1,0 +1,230 @@
+---
+- name: Limpar locks do apt
+  shell: |
+    rm -f /var/lib/apt/lists/lock
+    rm -f /var/cache/apt/archives/lock
+    rm -f /var/lib/dpkg/lock*
+  become: yes
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+
+- name: Aguardar sistema estar pronto
+  pause:
+    seconds: 5
+  tags:
+    - db_setup
+    - mysql
+
+- name: Remover configuração de proxy
+  file:
+    path: /etc/apt/apt.conf.d/01proxy
+    state: absent
+  become: yes
+  tags:
+    - db_setup
+    - mysql
+
+- name: Tentar atualizar cache de pacotes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  retries: 5
+  delay: 15
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+
+- name: Instalar MySQL Server e dependências
+  package:
+    name:
+      - mysql-server
+      - mysql-client
+      - python3-pymysql
+      - python3-dev
+    state: present
+  retries: 3
+  delay: 10
+  register: pkg_install_result
+  until: pkg_install_result is succeeded
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - install
+
+- name: Garantir que o MySQL está rodando
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+
+- name: Aguardar MySQL estar pronto
+  wait_for:
+    port: 3306
+    delay: 2
+    timeout: 30
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+
+- name: Criar arquivo de configuração my.cnf
+  template:
+    src: my.cnf.j2
+    dest: /etc/mysql/conf.d/my.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mysql
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - config
+
+- name: Criar diretório de dados personalizado
+  file:
+    path: /var/lib/mysql-data
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+  tags:
+    - db_setup
+    - mysql
+
+- name: Criar banco de dados principal
+  community.mysql.mysql_db:
+    name: aplicacao_db
+    state: present
+    login_unix_socket: /run/mysqld/mysqld.sock
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+
+- name: Criar tabela de usuários
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_db: aplicacao_db
+    query:
+      - CREATE TABLE IF NOT EXISTS usuarios (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, senha VARCHAR(255) NOT NULL, ativo BOOLEAN DEFAULT TRUE, data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP, data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+    - tables
+
+- name: Criar tabela de logs
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_db: aplicacao_db
+    query:
+      - CREATE TABLE IF NOT EXISTS logs (id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT, acao VARCHAR(255) NOT NULL, detalhes TEXT, ip_origem VARCHAR(45), data_log TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (usuario_id) REFERENCES usuarios(id))
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+    - tables
+
+- name: Criar tabela de configurações
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_db: aplicacao_db
+    query:
+      - CREATE TABLE IF NOT EXISTS configuracoes (id INT AUTO_INCREMENT PRIMARY KEY, chave VARCHAR(255) UNIQUE NOT NULL, valor TEXT NOT NULL, data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+    - tables
+
+- name: Inserir dados iniciais - Usuários
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_db: aplicacao_db
+    query:
+      - INSERT IGNORE INTO usuarios (nome, email, senha, ativo) VALUES ('Administrador', 'admin@aplicacao.local', SHA2('admin123', 256), TRUE),('Usuário Teste', 'teste@aplicacao.local', SHA2('teste123', 256), TRUE),('Operador', 'operador@aplicacao.local', SHA2('operador123', 256), TRUE)
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+    - seed_data
+
+- name: Inserir dados iniciais - Configurações
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    login_db: aplicacao_db
+    query:
+      - INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('app_name', 'Aplicação Ansible'),('app_version', '1.0.0'),('timezone', 'America/Sao_Paulo'),('log_level', 'INFO'),('max_connections', '100')
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - database
+    - seed_data
+
+- name: Criar usuário MySQL para aplicação
+  community.mysql.mysql_user:
+    name: app_user
+    password: "SecurePassword123!"
+    priv: 'aplicacao_db.*:ALL'
+    host: 'localhost'
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: present
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - users
+  no_log: true
+
+- name: Criar usuário MySQL para replicação
+  community.mysql.mysql_user:
+    name: repl_user
+    password: "ReplicationPass123!"
+    priv: '*.*:REPLICATION SLAVE'
+    host: '%'
+    login_unix_socket: /run/mysqld/mysqld.sock
+    state: present
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - users
+    - replication
+  no_log: true
+
+- name: Flush MySQL privileges
+  community.mysql.mysql_query:
+    login_unix_socket: /run/mysqld/mysqld.sock
+    query: FLUSH PRIVILEGES
+  ignore_errors: yes
+  tags:
+    - db_setup
+    - mysql
+    - users
+
+- name: Exibir resultado
+  debug:
+    msg: |
+      ✓ Database Configuration Concluída!
+      Host: {{ ansible_facts['default_ipv4']['address'] }}
+      Porta: 3306
+      Banco: aplicacao_db
+      Usuário: app_user
+  tags:
+    - db_setup
+    - mysql

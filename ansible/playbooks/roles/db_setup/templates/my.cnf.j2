@@ -1,0 +1,58 @@
+# MySQL Configuration File
+# Gerado automaticamente pelo Ansible
+
+[client]
+user     = root
+password = {{ mysql_root_password }}
+socket   = /run/mysqld/mysqld.sock
+
+[mysqld_safe]
+socket   = /run/mysqld/mysqld.sock
+nice     = 0
+
+[mysqld]
+# Basic Settings
+user           = mysql
+pid-file       = /var/run/mysqld/mysqld.pid
+socket         = /run/mysqld/mysqld.sock
+port           = 3306
+basedir        = /usr
+datadir        = /var/lib/mysql
+tmpdir         = /tmp
+skip-external-locking
+
+# Performance Settings
+max_connections        = 100
+connect_timeout        = 10
+wait_timeout           = 600
+max_allowed_packet     = 16M
+thread_cache_size      = 128
+sort_buffer_size       = 4M
+bulk_insert_buffer_size = 16M
+tmp_table_size         = 32M
+max_heap_table_size    = 32M
+
+# Logging
+log_error              = /var/log/mysql/error.log
+general_log            = 0
+general_log_file       = /var/log/mysql/general.log
+slow_query_log         = 1
+slow_query_log_file    = /var/log/mysql/slow.log
+long_query_time        = 2
+
+# Security
+skip_name_resolve      = 1
+symbolic-links         = 0
+
+# Binary Logging
+log_bin                = /var/log/mysql/mysql-bin.log
+binlog_format         = mixed
+expire_logs_days      = 10
+max_binlog_size       = 100M
+
+# InnoDB Settings
+default_storage_engine = InnoDB
+innodb_buffer_pool_size = 256M
+innodb_log_file_size   = 100M
+innodb_file_per_table  = 1
+innodb_flush_log_at_trx_commit = 1

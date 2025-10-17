@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserver - {{ ansible_facts['hostname'] }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+            border-radius: 5px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 10px;
+        }
+        .info-value {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        .status {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Webserver Ativo</h1>
+        
+        <div class="status">
+            ✓ Servidor está respondendo normalmente
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">📍 Hostname:</div>
+            <div class="info-value">{{ ansible_facts['hostname'] }}</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">🌐 Endereço IP:</div>
+            <div class="info-value">{{ ansible_facts['default_ipv4']['address'] }}</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">🖥️ Sistema Operacional:</div>
+            <div class="info-value">{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">⚙️ Arquitetura:</div>
+            <div class="info-value">{{ ansible_facts['machine'] }}</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">🔧 Processadores:</div>
+            <div class="info-value">{{ ansible_facts['processor_vcpus'] }} vCPU(s)</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-label">💾 Memória Total:</div>
+            <div class="info-value">{{ (ansible_facts['memtotal_mb'] / 1024) | round(2) }} GB</div>
+        </div>
+
+        <span class="badge">NGINX Running ✓</span>
+    </div>
+</body>
+</html>
