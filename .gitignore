@@ -2,3 +2,7 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+*.pem
+*.ppk
+*pair.pem
+*.vscode/
